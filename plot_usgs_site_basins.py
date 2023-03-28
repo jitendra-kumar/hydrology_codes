@@ -1,21 +1,38 @@
+# Query USGS server and get basic info for USGS site
+def get_info_USGSsite(sitecode):
+    from pygeohydro import NWIS
+ 
+    query = {
+        "site": "%s"%(sitecode)
+    }
+    info = NWIS().get_info(query)
+    return info
+
+# Query USGS server and get upstream contributing area for USGS site
+def get_UpstreamBasin_USGSsite(sitecode):
+    from pynhd import NLDI
+        
+    basin = NLDI().get_basins([sitecode])
+    basin = basin.to_crs('EPSG:4326')
+    return basin
 
 def plot_basins(basins, basins_info, neighbor_huc12):
-	"""
-    Function to plot USGS sites, upstream basins and neighboring HUC12s
-
-	Parameters
-	----------
+    """ Function to plot USGS sites, upstream basins and neighboring HUC12s
+    
+    Parameters
+    ----------
     basins: Geometry of upstream basin 
-	basins_info: Metadata information for USGS site
+    basins_info: Metadata information for USGS site
     neighbor_huc12: Geometries of all HUC12 within the extent/neighborhood of the upstream basin.	
-
-    Return
+    
+     Return
     ------
     No returns. Make 2 subplots, first showing CONUS scale map with the
-	USGS gauge sites and basins for spatial context, and second panel
-	zoomed in to show the USGS gauge site, upstream basin, and
-	neighboring HUC12s. 	
-	"""
+    USGS gauge sites and basins for spatial context, and second panel
+    zoomed in to show the USGS gauge site, upstream basin, and
+    neighboring HUC12s. 	
+    """
+
     import matplotlib.pyplot as plt
     import contextily as cx
     from shapely.geometry import Point
@@ -36,16 +53,15 @@ def plot_basins(basins, basins_info, neighbor_huc12):
     
     neighbor_huc12.boundary.plot(edgecolor='grey', linewidth=1, ax=ax[1], color=None)
     basins.plot(ax=ax[1], color='blue')
-    site_loc_df.plot(ax=ax[1], markersize=20, color='red', marker='o', label=basins_info.site_no)
+    site_loc_df.plot(ax=ax[1], markersize=30, color='red', marker='o', label=basins_info.site_no[0])
     cx.add_basemap(ax[1], crs=basins.crs)
     ax[1].set_title(basins_info.station_nm[0])
     plt.tight_layout()
-    plt.savefig('map_basins_%s.png'%(id), bbox_inches='tight', dpi=300)
+    plt.savefig('map_basins_%s.png'%(basins_info.site_no[0]), bbox_inches='tight', dpi=300)
     plt.show()
     
 def get_US_States(nstates=48):
-    """
-    Function to get geometry of US States from GeoJSON file.
+    """ Function to get geometry of US States from GeoJSON file.
     
 	Parameters
 	----------
@@ -63,7 +79,8 @@ def get_US_States(nstates=48):
         exit(1)
     
     #read US States():
-    us_states = gpd.read_file('https://github.com/jitendra-kumar/hydrology_codes/raw/main/data/USA_states_epsg4326.geojson')
+    us_states = gpd.read_file('data/USA_states_epsg4326.geojson')
+    #us_states = gpd.read_file('https://climatemodeling.org/~jkumar/data/vectors/USA_states_epsg4326.geojson')
     # extract CONUS only -- lower 48
     conus_states = us_states[~us_states.NAME_1.isin(['Alaska', 'Hawaii'])]
     if nstates==50:
@@ -72,24 +89,23 @@ def get_US_States(nstates=48):
         return conus_states
 
 def get_basins(id):
-	"""
-	Function to retrieve following information for a USGS gauge sites
-	retrieved from USGS REST APIs https://waterdata.usgs.gov/
-	   -- basic metadata
-	   -- upstream contributing basin
-	   -- geometry of all HUC12 basins within the extent/neighborhood of the upstream basin
-
-	Parameters
-	----------
-	id : USGS site_code
-
-	Returns
-	-------
+    """ Function to retrieve following information for a USGS gauge sites
+    retrieved from USGS REST APIs https://waterdata.usgs.gov/
+        -- basic metadata
+        -- upstream contributing basin
+        -- geometry of all HUC12 basins within the extent/neighborhood of the upstream basin
+    
+    Parameters
+    ----------
+    id : USGS site_code
+    
+    Returns
+    -------
     basins: Geometry of upstream basin 
-	basins_info: Metadata information for USGS site
+    basins_info: Metadata information for USGS site
     neighbor_huc12: Geometries of all HUC12 within the extent/neighborhood of the upstream basin.	
-
-	"""
+    
+    """
     from pynhd import NLDI, NHDPlusHR
     from pygeohydro import NWIS
        
@@ -98,7 +114,7 @@ def get_basins(id):
     basins.to_file('basin_%s.json'%(id), driver="GeoJSON")
     
     # Get all HUC12s in the extent/neihborhood of the USGS gauge site for context
-    r = NHDPlusHR("huc12")
+    hr = NHDPlusHR("huc12")
     neighbor_huc12 = hr.bygeom(basins.geometry[0].bounds)
     
     return basins,basins_info,neighbor_huc12
