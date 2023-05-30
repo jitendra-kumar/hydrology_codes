@@ -12,9 +12,10 @@ os.chdir(inDir)                                        # Change to working direc
 
 # Read the Area of Interest (AOI) -- geojson or shapefile
 aoi = gpd.read_file(AOIFILE) # Read in GeoJSON or Shapefile as dataframe using geopandas
-aoi = aoi.drop(columns=['loaddate']).explode(index_parts=True)
+if 'loaddate' in aoi:
+    aoi = aoi.drop(columns=['loaddate']).explode(index_parts=True)
 aoi = json.loads(aoi.to_json())
-# Parsethe AOIFILE to create task_name, add today's date
+# Parse the AOIFILE to create task_name, add today's date
 task_name=AOIFILE.split('/')[-1].split('.')[0]+"_"+pd.to_datetime("today").strftime("%Y%m%d")
 
 # Set up Auth for NASA APPEEARS
@@ -25,10 +26,13 @@ user = getpass.getpass(prompt = 'Enter NASA Earthdata Login Username: ')      # 
 password = getpass.getpass(prompt = 'Enter NASA Earthdata Login Password: ')  # Input NASA Earthdata Login Password
 
 token_response = r.post('{}login'.format(api), auth=(user, password)).json()  # Insert API URL, call login service, provide credentials & return json
+print(token_response)
 token = token_response['token']                                               # Save login token to a variable
 head = {'Authorization': 'Bearer {}'.format(token)}                           # Create a header to store token information, needed to submit a request
 del user, password                                                            # Remove user and password information
 
+######################################################
+# MODIS 
 # Create list of products of interest
 # MYD16A2.061  ET -- MODIS Aqua
 # MOD16A2.061  ET -- MODIS Terra
@@ -53,13 +57,47 @@ layers.append((prod_list[1],'Lai_500m'))
 # GPP - MODIS Aqua
 layers.append((prod_list[2],'Gpp_500m'))
 
-# Create a list of dictionaries
-prodLayer = []
+modis_prodLayer = []
+# Create a list of dictionaries for MODIS
 for l in layers:
-    prodLayer.append({
+    modis_prodLayer.append({
             "layer": l[1],
             "product": l[0]
           })
+######################################################
+
+######################################################
+# DAYMET : ['dayl', 'prcp', 'srad', 'swe', 'tmax', 'tmin', 'vp']
+daymet_layers = [('DAYMET.004', 'dayl')]
+daymet_layers.append(('DAYMET.004', 'prcp'))
+#daymet_layers.append(('DAYMET.004', 'srad'))
+#daymet_layers.append(('DAYMET.004', 'swe'))
+#daymet_layers.append(('DAYMET.004', 'tmin'))
+#daymet_layers.append(('DAYMET.004', 'tmax'))
+#daymet_layers.append(('DAYMET.004', 'vp'))
+
+daymet_prodLayer = []
+# Create a list of dictionaries for DAYMET
+for l in daymet_layers:
+    daymet_prodLayer.append({
+            "layer": l[1],
+            "product": l[0]
+          })
+
+######################################################
+
+######################################################
+# NASADEM_NC: NASADEM_HGT
+nasadem_layers = [('NASADEM_NC.001', 'NASADEM_HGT')]
+
+nasadem_prodLayer = []
+# Create a list of dictionaries for NASADEM
+for l in nasadem_layers:
+    nasadem_prodLayer.append({
+            "layer": l[1],
+            "product": l[0]
+          })
+######################################################
 
 # Submit an Area Request
 
@@ -84,7 +122,9 @@ task = {
              'recurring': False,
              'yearRange': [1950, 2050],
          }],
-         'layers': prodLayer,
+#         'layers': modis_prodLayer,
+#         'layers': daymet_prodLayer,
+         'layers': nasadem_prodLayer,
          'output': {
                  'format': {
                          'type': 'netcdf4'},
@@ -95,7 +135,7 @@ task = {
 
 # Submit a Task Request
 task_response = r.post('{}task'.format(api), json=task, headers=head).json()  # Post json to the API task service, return response as json
-
+print(task_response)
 # take the task id returned from the task_response that was generated when submitting your request, and use the AρρEEARS API status service to check the status of your request.
 task_id = task_response['task_id']                                               # Set task id from request submission
 

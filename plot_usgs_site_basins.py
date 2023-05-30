@@ -79,7 +79,7 @@ def get_US_States(nstates=48):
         exit(1)
     
     #read US States():
-    us_states = gpd.read_file('data/USA_states_epsg4326.geojson')
+    us_states = gpd.read_file('USA_states_epsg4326.geojson')
     #us_states = gpd.read_file('https://climatemodeling.org/~jkumar/data/vectors/USA_states_epsg4326.geojson')
     # extract CONUS only -- lower 48
     conus_states = us_states[~us_states.NAME_1.isin(['Alaska', 'Hawaii'])]
@@ -120,7 +120,8 @@ def get_basins(id):
     return basins,basins_info,neighbor_huc12
 
 def main():
-    id="07340300"
+    #id="07340300"  # Cossatot River
+    id="12488500"   # American River Watershed
     basins,basins_info,neighbor_huc12 = get_basins(id)
     plot_basins(basins,basins_info,neighbor_huc12)
 
